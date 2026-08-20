@@ -7,7 +7,7 @@ import numpy as np
 
 st.title("AAPL Hisse Tahmin Uygulaması")
 
-# Yan menü (Sidebar) ekleyelim
+# Yan menü (Sidebar)
 st.sidebar.header("Ayarlar")
 hisse_kodu = st.sidebar.text_input("Hisse Kodu Giriniz", "AAPL")
 gun_sayisi = st.sidebar.slider("Geçmiş Gün Aralığı", 30, 365, 250)
@@ -31,7 +31,7 @@ st.pyplot(fig)
 
 # İstatistiksel özet
 st.write("Seçilen döneme ait fiyat istatistikleri:")
-st.write(df['Close'].describe()
+st.dataframe(df['Close'].describe())
 
 # Gelecek Tahmini Hesaplama (5 gün sonrası için)
 son_gun_index = df['Day_Index'].iloc[-1]
