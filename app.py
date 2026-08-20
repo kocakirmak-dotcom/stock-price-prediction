@@ -7,25 +7,28 @@ import numpy as np
 
 st.title("AAPL Hisse Tahmin Uygulaması")
 
-# Veriyi çek
-data = yf.download("AAPL", start="2025-08-19", end="2026-08-19")
-df = data.reset_index()
+# Yan menü (Sidebar) ekleyelim
+st.sidebar.header("Ayarlar")
+hisse_kodu = st.sidebar.text_input("Hisse Kodu Giriniz", "AAPL")
+gun_sayisi = st.sidebar.slider("Geçmiş Gün Aralığı", 30, 365, 250)
 
-# Sütun isimlerinde boşluk veya yanlışlık olmasın diye indeksliyoruz
+# Veriyi çek
+data = yf.download(hisse_kodu, period=f"{gun_sayisi}d")
+df = data.reset_index()
 df['Day_Index'] = np.arange(len(df))
 
 # Regresyon Modeli
 model = LinearRegression()
-# Sütun isimlerini tam olarak df.columns ile kontrol edip fit ediyoruz
 model.fit(df[['Day_Index']], df['Close'])
 df['Prediction'] = model.predict(df[['Day_Index']])
 
 # Grafik çizimi
 fig, ax = plt.subplots()
 ax.plot(df['Close'], label='Gerçek Fiyat')
-ax.plot(df['Prediction'], label='Tahmin', color='red')
+ax.plot(df['Prediction'], label='Tahmin (Regresyon)', color='red')
 ax.legend()
 st.pyplot(fig)
 
-# Tahmin
-st.write("Modelin genel eğilim analizi başarıyla tamamlandı.")
+# İstatistiksel özet
+st.write("Seçilen döneme ait fiyat istatistikleri:")
+st.write(df['Close'].describe())
