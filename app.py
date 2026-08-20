@@ -31,4 +31,12 @@ st.pyplot(fig)
 
 # İstatistiksel özet
 st.write("Seçilen döneme ait fiyat istatistikleri:")
-st.write(df['Close'].describe())
+st.write(df['Close'].describe()
+
+# Gelecek Tahmini Hesaplama (5 gün sonrası için)
+son_gun_index = df['Day_Index'].iloc[-1]
+gelecek_gunler = np.array([[son_gun_index + 1], [son_gun_index + 5]])
+tahminler = model.predict(gelecek_gunler)
+
+st.subheader("Önümüzdeki 5 Gün İçin Tahmin")
+st.write(f"5 Gün Sonraki Tahmini Fiyat: ${tahminler[1]:.2f}")
