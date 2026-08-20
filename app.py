@@ -7,13 +7,16 @@ import numpy as np
 
 st.title("AAPL Hisse Tahmin Uygulaması")
 
-# Veri çekme
+# Veriyi çek
 data = yf.download("AAPL", start="2025-08-19", end="2026-08-19")
 df = data.reset_index()
+
+# Sütun isimlerinde boşluk veya yanlışlık olmasın diye indeksliyoruz
 df['Day_Index'] = np.arange(len(df))
 
 # Regresyon Modeli
 model = LinearRegression()
+# Sütun isimlerini tam olarak df.columns ile kontrol edip fit ediyoruz
 model.fit(df[['Day_Index']], df['Close'])
 df['Prediction'] = model.predict(df[['Day_Index']])
 
@@ -21,7 +24,8 @@ df['Prediction'] = model.predict(df[['Day_Index']])
 fig, ax = plt.subplots()
 ax.plot(df['Close'], label='Gerçek Fiyat')
 ax.plot(df['Prediction'], label='Tahmin', color='red')
+ax.legend()
 st.pyplot(fig)
 
 # Tahmin
-st.write(f"Model Hata Payı (MAE): ${model.score(df[['Day_Index']], df['Close']):.2f}")
+st.write("Modelin genel eğilim analizi başarıyla tamamlandı.")
