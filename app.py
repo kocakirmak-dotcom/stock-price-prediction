@@ -39,4 +39,5 @@ gelecek_gunler = np.array([[son_gun_index + 1], [son_gun_index + 5]])
 tahminler = model.predict(gelecek_gunler)
 
 st.subheader("Önümüzdeki 5 Gün İçin Tahmin")
-st.write(f"5 Gün Sonraki Tahmini Fiyat: ${tahminler[1]:.2f}")
+gelecek_fiyat = float(tahminler[1].item())
+st.write(f"5 Gün Sonraki Tahmini Fiyat: ${gelecek_fiyat:.2f}")
