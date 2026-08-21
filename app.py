@@ -46,12 +46,12 @@ st.pyplot(fig)
 st.subheader("İstatistiksel Özet")
 st.write(df['Close'].describe())
 
-# 5 Gün Sonraki Fiyat Tahmini (Garanti Tip Dönüşümü)
+# 5 Gün Sonraki Fiyat Tahmini (En sade ve güvenli yöntem)
 son_index = df['Day_Index'].iloc[-1]
 tahmin_5_gun = model.predict([[son_index + 5]])
 
-# Verinin tipinden bağımsız olarak ilk elemanı güvenle çekiyoruz
-son_fiyat = float(pd.Series(df['Close']).iloc[-1])
+# Son fiyatı NumPy dizisine çevirip en garantili şekilde alıyoruz
+son_fiyat = float(df['Close'].values[-1])
 gelecek_fiyat = float(tahmin_5_gun[0])
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
