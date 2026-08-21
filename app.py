@@ -34,11 +34,11 @@ if isinstance(df.columns, pd.MultiIndex):
 
 close_prices = df['Close'].values.ravel().astype(float)
 
-# 2. Veriyi Ölçeklendirme (MinMaxScaler - Derin Öğrenme için şart)
+# 2. Veriyi Ölçeklendirme (MinMaxScaler)
 scaler = MinMaxScaler(feature_range=(0, 1))
 scaled_data = scaler.fit_transform(close_prices.reshape(-1, 1))
 
-# Zaman Serisi Pencereleme (Sliding Window - 5 günlük geçmişe bakarak sonrakini tahmin et)
+# Zaman Serisi Pencereleme (Sliding Window)
 def create_dataset(dataset, look_back=5):
     X, y = [], []
     for i in range(len(dataset) - look_back - 1):
@@ -50,11 +50,10 @@ def create_dataset(dataset, look_back=5):
 look_back = 5
 X_np, y_np = create_dataset(scaled_data, look_back)
 
-# PyTorch Tensor'lerine Dönüştürme
-X_tensor = torch.tensor(X_np, dtype=torch.float32).unsqueeze(-1) # [Batch, Seq, Feature]
+X_tensor = torch.tensor(X_np, dtype=torch.float32).unsqueeze(-1)
 y_tensor = torch.tensor(y_np, dtype=torch.float32).unsqueeze(-1)
 
-# 3. PyTorch LSTM Model Mimarisi Tanımlama
+# 3. PyTorch LSTM Model Mimarisi
 class LSTMModel(nn.Module):
     def __init__(self, input_dim=1, hidden_dim=32, output_dim=1):
         super(LSTMModel, self).__init__()
@@ -63,15 +62,15 @@ class LSTMModel(nn.Module):
         
     def forward(self, x):
         out, _ = self.lstm(x)
-        out = self.fc(out[:, -1, :]) # Sadece son zaman adımının çıktısı
+        out = self.fc(out[:, -1, :])
         return out
 
 model = LSTMModel()
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
-# 4. Modeli Eğitme (Training Loop)
-with st.spinner("PyTorch LSTM modeli eğitiliyor, lütfen bekleyin..."):
+# 4. Modeli Eğitme
+with st.spinner("PyTorch LSTM modeli eğitiliyor..."):
     model.train()
     for epoch in range(epochs):
         optimizer.zero_grad()
@@ -80,19 +79,23 @@ with st.spinner("PyTorch LSTM modeli eğitiliyor, lütfen bekleyin..."):
         loss.backward()
         optimizer.step()
 
-# Model Tahminleri ve Ters Ölçekleme (Inverse Transform)
+# Tahminler
 model.eval()
 with torch.no_grad():
     train_predict = model(X_tensor)
+    # Son 5 günlük pencere ile geleceği tahmin etme
+    son_pencere = torch.tensor(scaled_data[-look_back:].reshape(1, look_back, 1), dtype=torch.float32)
+    gelecek_tahmin_scaled = model(son_pencere)
 
 predicted_prices = scaler.inverse_transform(train_predict.numpy())
 actual_prices = scaler.inverse_transform(y_tensor.numpy())
+gelecek_fiyat = float(scaler.inverse_transform(gelecek_tahmin_scaled.numpy())[0][0])
 
-# 5. Model Değerlendirme Metrikleri (MSE ve RMSE)
+# 5. Değerlendirme Metrikleri (MSE / RMSE)
 mse = mean_squared_error(actual_prices, predicted_prices)
 rmse = np.sqrt(mse)
 
-# 6. Görselleştirme (Matplotlib)
+# 6. Görselleştirme
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.plot(actual_prices, label='Gerçek Fiyatlar', color='blue')
 ax.plot(predicted_prices, label='PyTorch LSTM Tahminleri', color='red', linestyle='--')
@@ -100,7 +103,6 @@ ax.set_title(f"{hisse_kodu} - PyTorch LSTM Zaman Serisi Tahmini")
 ax.legend()
 st.pyplot(fig)
 
-# Metrikleri Gösterme
 st.subheader("📊 PyTorch Model Performans Metrikleri")
 mcol1, mcol2 = st.columns(2)
 with mcol1:
@@ -108,14 +110,10 @@ with mcol1:
 with mcol2:
     st.metric("Kök Ortalama Kare Hata (RMSE)", f"{rmse:.2f}")
 
-# İstatistiksel Özet
 st.subheader("İstatistiksel Özet")
 st.write(pd.Series(close_prices).describe())
 
-# Gelecek 5 Günlük Tahmin Simülasyonu (Recursive Tahmin)
 son_fiyat = float(close_prices[-1])
-# Basit simüle edilmiş gelecek fiyat değişimi (LSTM son eğilimine göre)
-gelecek_fiyat = son_fiyat * (1 + (np.mean(np.diff(predicted_prices[-5:])) / son_fiyat))
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
 col1, col2 = st.columns(2)
@@ -124,7 +122,7 @@ with col1:
 with col2:
     st.metric("5 Gün Sonraki Tahmin (LSTM)", f"${gelecek_fiyat:.2f}", delta=f"%{fark_yuzde:.2f}")
 
-# Foundry Local / LLM Akıllı Asistan Kısmı
+# Foundry Local / LLM Asistanı
 st.subheader("🤖 Foundry Local Risk Analisti")
 
 if st.button("PyTorch Tabanlı Risk Analizi Üret"):
