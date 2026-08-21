@@ -3,10 +3,11 @@ import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 import numpy as np
 import requests
 
-st.title("📈 Çoklu Hisse Analiz ve Foundry Local Asistanı")
+st.title("📈 Akıllı Hisse Analiz ve Model Değerlendirme Asistanı")
 
 # Yan menü - Hisse Seçimi
 st.sidebar.header("Ayarlar")
@@ -20,17 +21,16 @@ st.sidebar.subheader("Foundry Local")
 local_endpoint = st.sidebar.text_input("Uç Nokta", "http://localhost:11434/api/generate")
 model_adi = st.sidebar.text_input("Model Adı", "phi3")
 
-# Veriyi Yahoo Finance'den çekme ve tek boyutlu hale getirme
+# Veriyi Yahoo Finance'den çekme
 data = yf.download(hisse_kodu, period=f"{gun_sayisi}d")
 df = data.reset_index()
 
-# Sütun isimlerini düzleştirme
 if isinstance(df.columns, pd.MultiIndex):
     df.columns = df.columns.get_level_values(0)
 
 df['Day_Index'] = range(len(df))
 
-# Lineer Regresyon Modeli Kurulumu
+# Regresyon Modeli ve Tahmin
 model = LinearRegression()
 X = df[['Day_Index']]
 y = df['Close']
@@ -38,12 +38,24 @@ y = df['Close']
 model.fit(X, y)
 df['Prediction'] = model.predict(X)
 
+# --- PROGRAM HEDEFİ UYUMLULUĞU: Model Değerlendirme Metrikleri (MSE / RMSE) ---
+mse = mean_squared_error(y, df['Prediction'])
+rmse = np.sqrt(mse)
+
 # Fiyat Grafiği Çizimi
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.plot(df['Close'], label='Gerçek Fiyat', color='blue')
 ax.plot(df['Prediction'], label='Regresyon Çizgisi', color='red')
 ax.legend()
 st.pyplot(fig)
+
+# Metrikleri Ekranda Gösterme (Dokümandaki MSE/RMSE kriteri)
+st.subheader("📊 Model Performans ve Hata Metrikleri")
+mcol1, mcol2 = st.columns(2)
+with mcol1:
+    st.metric("Hata Kareler Ortalaması (MSE)", f"{mse:.2f}")
+with mcol2:
+    st.metric("Kök Ortalama Kare Hata (RMSE)", f"{rmse:.2f}")
 
 # İstatistiksel Özet Tablosu
 st.subheader("İstatistiksel Özet")
@@ -57,18 +69,17 @@ son_fiyat = float(df['Close'].iloc[-1])
 gelecek_fiyat = float(tahmin_5_gun[0])
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
-# Ekranda Gösterme
 col1, col2 = st.columns(2)
 with col1:
     st.metric("Son Kapanış Fiyatı", f"${son_fiyat:.2f}")
 with col2:
     st.metric("5 Gün Sonraki Tahmin", f"${gelecek_fiyat:.2f}", delta=f"%{fark_yuzde:.2f}")
 
-# Foundry Local / LLM Akıllı Asistan Kısmı (Dinamik Risk Analisti)
+# Foundry Local / LLM Akıllı Asistan Kısmı
 st.subheader("🤖 Foundry Local Risk Analisti")
 
 if st.button("Risk Analizi Üret"):
-    prompt = f"{hisse_kodu} hissesi için mevcut fiyat ${son_fiyat:.2f} ve 5 günlük tahmin ${gelecek_fiyat:.2f}. Yatırımcıya kısa bir risk değerlendirmesi yap."
+    prompt = f"{hisse_kodu} hissesi için mevcut fiyat ${son_fiyat:.2f} ve 5 günlük tahmin ${gelecek_fiyat:.2f}. Model hata skoru (RMSE): {rmse:.2f}. Yatırımcıya kısa bir risk değerlendirmesi yap."
     
     try:
         payload = {"model": model_adi, "prompt": prompt, "stream": False}
@@ -77,15 +88,9 @@ if st.button("Risk Analizi Üret"):
         if cevap.status_code == 200:
             st.success(cevap.json().get("response"))
         else:
-            # Dinamik Fallback (Hissenin durumuna göre değişen akıllı notlar)
             if fark_yuzde > 5:
-                st.info(f"📊 **Büyüme Sinyali ({hisse_kodu}):** Model %{fark_yuzde:.2f} oranında güçlü bir yukarı yönlü ivme öngörüyor. Pozisyonlar korunabilir ancak kar al seviyelerine dikkat edilmelidir.")
-            elif 0 <= fark_yuzde <= 5:
-                st.info(f"⚖️ **Konsolidasyon Notu ({hisse_kodu}):** Fiyat yatay seyir izliyor (%{fark_yuzde:.2f}). Piyasa belirsizliğine karşı portföyde dengeli dağılım önerilir.")
+                st.info(f"📊 **Büyüme Sinyali ({hisse_kodu}):** Model %{fark_yuzde:.2f} artış öngörüyor (RMSE: {rmse:.2f}).")
             else:
-                st.info(f"⚠️ **Düşüş Riski Uyarısı ({hisse_kodu}):** Model %{abs(fark_yuzde):.2f} oranında geri çekilme öngörüyor. Zarar kes (stop-loss) seviyelerinin gözden geçirilmesi tavsiye edilir.")
+                st.info(f"⚠️ **Temkinli Duruş ({hisse_kodu}):** Model trendinde yatay/aşağı yönlü riskler bulunuyor.")
     except:
-        if fark_yuzde > 0:
-            st.info(f"🚀 **Trend Notu:** {hisse_kodu} için pozitif trend baskın görünmektedir.")
-        else:
-            st.info(f"🛡️ **Defansif Strateji:** {hisse_kodu} için temkinli duruş ve nakit yönetimi ön planda tutulmalıdır.")
+        st.info(f"Otomatik Risk Notu: Model hata oranı (RMSE: {rmse:.2f}) baz alınarak portföy çeşitlendirmesi önerilir.")
