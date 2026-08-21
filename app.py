@@ -47,8 +47,9 @@ son_gun_index = df['Day_Index'].iloc[-1]
 gelecek_gunler = np.array([[son_gun_index + 1], [son_gun_index + 5]])
 tahminler = model.predict(gelecek_gunler)
 
-gelecek_fiyat = float(tahminler[1].item())
-son_fiyat = float(df['Close'].iloc[-1].item) if hasattr(df['Close'].iloc[-1], 'item') else float(df['Close'].iloc[-1])
+# Güvenli tip dönüşümü (Hata almamak için .iloc[0] kullanıyoruz)
+gelecek_fiyat = float(tahminler[1])
+son_fiyat = float(df['Close'].iloc[-1].iloc[0]) if isinstance(df['Close'].iloc[-1], pd.Series) else float(df['Close'].iloc[-1])
 degisim_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
 col1, col2 = st.columns(2)
@@ -57,7 +58,7 @@ with col1:
 with col2:
     st.metric(label="5 Gün Sonraki Tahmini Fiyat", value=f"${gelecek_fiyat:.2f}", delta=f"{degisim_yuzde:.2f}%")
 
-# Foundry Local / Akıllı Asistan (Farklı Bir Perspektif: Risk ve Strateji)
+# Foundry Local / Akıllı Asistan (Strateji ve Risk Analizi)
 st.subheader("🤖 Foundry Local Strateji ve Risk Analisti")
 
 if st.button("Yerel LLM ile Stratejik Risk Raporu Oluştur"):
