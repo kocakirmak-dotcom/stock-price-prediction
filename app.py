@@ -24,7 +24,7 @@ model_adi = st.sidebar.text_input("Model Adı", "phi3")
 data = yf.download(hisse_kodu, period=f"{gun_sayisi}d")
 df = data.reset_index()
 
-# Gün indeksini sütun olarak ekleme (Basit lineer regresyon için)
+# Gün indeksini sütun olarak ekleme
 df['Day_Index'] = range(len(df))
 
 # Lineer Regresyon Modeli Kurulumu
@@ -46,11 +46,12 @@ st.pyplot(fig)
 st.subheader("İstatistiksel Özet")
 st.write(df['Close'].describe())
 
-# 5 Gün Sonraki Fiyat Tahmini (Basit matematiksel hesap)
+# 5 Gün Sonraki Fiyat Tahmini (Garanti Tip Dönüşümü)
 son_index = df['Day_Index'].iloc[-1]
 tahmin_5_gun = model.predict([[son_index + 5]])
 
-son_fiyat = float(df['Close'].iloc[-1])
+# Verinin tipinden bağımsız olarak ilk elemanı güvenle çekiyoruz
+son_fiyat = float(pd.Series(df['Close']).iloc[-1])
 gelecek_fiyat = float(tahmin_5_gun[0])
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
@@ -74,7 +75,6 @@ if st.button("Risk Analizi Üret"):
         if cevap.status_code == 200:
             st.success(cevap.json().get("response"))
         else:
-            # Servis kapalıysa güvenli özet notu
             st.info(f"Yerel servis kapalı. Otomatik Not: {hisse_kodu} için değişim beklentisi %{fark_yuzde:.2f} seviyesindedir.")
     except:
         st.info(f"Otomatik Risk Notu: Model trendine göre portföyde çeşitlendirme yapılması önerilir.")
