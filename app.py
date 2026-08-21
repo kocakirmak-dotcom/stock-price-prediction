@@ -28,12 +28,15 @@ df = data.reset_index()
 if isinstance(df.columns, pd.MultiIndex):
     df.columns = df.columns.get_level_values(0)
 
+# Close sütununu %100 tek boyutlu (1D) diziye çevirme (ValueError önlemi)
+close_series = pd.Series(df['Close'].values.ravel())
+
 df['Day_Index'] = range(len(df))
 
 # Regresyon Modeli ve Tahmin
 model = LinearRegression()
 X = df[['Day_Index']]
-y = df['Close']
+y = close_series
 
 model.fit(X, y)
 df['Prediction'] = model.predict(X)
@@ -44,7 +47,7 @@ rmse = np.sqrt(mse)
 
 # Fiyat Grafiği Çizimi
 fig, ax = plt.subplots(figsize=(10, 5))
-ax.plot(df['Close'], label='Gerçek Fiyat', color='blue')
+ax.plot(close_series, label='Gerçek Fiyat', color='blue')
 ax.plot(df['Prediction'], label='Regresyon Çizgisi', color='red')
 ax.legend()
 st.pyplot(fig)
@@ -59,13 +62,13 @@ with mcol2:
 
 # İstatistiksel Özet Tablosu
 st.subheader("İstatistiksel Özet")
-st.write(df['Close'].describe())
+st.write(close_series.describe())
 
 # 5 Gün Sonraki Fiyat Tahmini
 son_index = df['Day_Index'].iloc[-1]
 tahmin_5_gun = model.predict([[son_index + 5]])
 
-son_fiyat = float(df['Close'].iloc[-1])
+son_fiyat = float(close_series.iloc[-1])
 gelecek_fiyat = float(tahmin_5_gun[0])
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
