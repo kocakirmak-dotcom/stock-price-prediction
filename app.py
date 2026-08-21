@@ -20,11 +20,14 @@ st.sidebar.subheader("Foundry Local")
 local_endpoint = st.sidebar.text_input("Uç Nokta", "http://localhost:11434/api/generate")
 model_adi = st.sidebar.text_input("Model Adı", "phi3")
 
-# Veriyi Yahoo Finance'den çekme
+# Veriyi Yahoo Finance'den çekme ve tek boyutlu hale getirme
 data = yf.download(hisse_kodu, period=f"{gun_sayisi}d")
 df = data.reset_index()
 
-# Gün indeksini sütun olarak ekleme
+# Sütun isimlerini düzleştirme (MultiIndex hatasını önlemek için)
+if isinstance(df.columns, pd.MultiIndex):
+    df.columns = df.columns.get_level_values(0)
+
 df['Day_Index'] = range(len(df))
 
 # Lineer Regresyon Modeli Kurulumu
@@ -46,12 +49,12 @@ st.pyplot(fig)
 st.subheader("İstatistiksel Özet")
 st.write(df['Close'].describe())
 
-# 5 Gün Sonraki Fiyat Tahmini (En sade ve güvenli yöntem)
+# 5 Gün Sonraki Fiyat Tahmini
 son_index = df['Day_Index'].iloc[-1]
 tahmin_5_gun = model.predict([[son_index + 5]])
 
-# Son fiyatı NumPy dizisine çevirip en garantili şekilde alıyoruz
-son_fiyat = float(df['Close'].values[-1])
+# Kesin ve hatasız fiyat çekme
+son_fiyat = float(df['Close'].iloc[-1])
 gelecek_fiyat = float(tahmin_5_gun[0])
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
