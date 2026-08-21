@@ -6,11 +6,16 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import requests
 
-st.title("📈 Akıllı Hisse Analiz ve Foundry Local LLM Asistanı")
+st.title("📈 Çoklu Hisse Analiz ve Foundry Local LLM Asistanı")
 
-# Yan menü (Sidebar)
+# Yan menü (Sidebar) - Çoklu Hisse Seçimi
 st.sidebar.header("Proje Ayarları")
-hisse_kodu = st.sidebar.text_input("Hisse Kodu Giriniz", "AAPL")
+hisse_listesi = ["AAPL (Apple)", "MSFT (Microsoft)", "GOOGL (Google)", "AMZN (Amazon)", "TSLA (Tesla)"]
+secilen_secenek = st.sidebar.selectbox("Analiz Edilecek Hisseyi Seçin", hisse_listesi)
+
+# Sembolü parantez içinden ayıkla (Örn: "AAPL (Apple)" -> "AAPL")
+hisse_kodu = secilen_secenek.split(" ")[0]
+
 gun_sayisi = st.sidebar.slider("Geçmiş Gün Aralığı", 30, 365, 250)
 
 # Yerel LLM / Foundry Local Bağlantı Ayarları
@@ -30,13 +35,13 @@ df['Prediction'] = model.predict(df[['Day_Index']])
 
 # Grafik çizimi
 fig, ax = plt.subplots(figsize=(10, 5))
-ax.plot(df['Close'], label='Gerçek Fiyat', color='blue')
+ax.plot(df['Close'], label=f'{hisse_kodu} Gerçek Fiyat', color='blue')
 ax.plot(df['Prediction'], label='Lineer Regresyon Tahmini', color='red', linestyle='--')
 ax.legend()
 st.pyplot(fig)
 
 # İstatistiksel özet
-st.subheader("📊 İstatistiksel Fiyat Özeti")
+st.subheader(f"📊 {hisse_kodu} - İstatistiksel Fiyat Özeti")
 st.dataframe(df['Close'].describe())
 
 # Gelecek Tahmini Hesaplama (5 gün sonrası için)
