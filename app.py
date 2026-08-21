@@ -12,8 +12,6 @@ st.title("📈 Çoklu Hisse Analiz ve Foundry Local LLM Asistanı")
 st.sidebar.header("Proje Ayarları")
 hisse_listesi = ["AAPL (Apple)", "MSFT (Microsoft)", "GOOGL (Google)", "AMZN (Amazon)", "TSLA (Tesla)"]
 secilen_secenek = st.sidebar.selectbox("Analiz Edilecek Hisseyi Seçin", hisse_listesi)
-
-# Sembolü parantez içinden ayıkla (Örn: "AAPL (Apple)" -> "AAPL")
 hisse_kodu = secilen_secenek.split(" ")[0]
 
 gun_sayisi = st.sidebar.slider("Geçmiş Gün Aralığı", 30, 365, 250)
@@ -50,36 +48,36 @@ gelecek_gunler = np.array([[son_gun_index + 1], [son_gun_index + 5]])
 tahminler = model.predict(gelecek_gunler)
 
 gelecek_fiyat = float(tahminler[1].item())
-son_fiyat = float(df['Close'].iloc[-1].item())
+son_fiyat = float(df['Close'].iloc[-1].item) if hasattr(df['Close'].iloc[-1], 'item') else float(df['Close'].iloc[-1])
+degisim_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
 col1, col2 = st.columns(2)
 with col1:
     st.metric(label="Mevcut Kapanış Fiyatı", value=f"${son_fiyat:.2f}")
 with col2:
-    st.metric(label="5 Gün Sonraki Tahmini Fiyat", value=f"${gelecek_fiyat:.2f}", delta=f"{((gelecek_fiyat - son_fiyat)/son_fiyat)*100:.2f}%")
+    st.metric(label="5 Gün Sonraki Tahmini Fiyat", value=f"${gelecek_fiyat:.2f}", delta=f"{degisim_yuzde:.2f}%")
 
-# Foundry Local / Yerel LLM Entegrasyon Bloğu
-st.subheader("🤖 Foundry Local Akıllı Finansal Asistan")
+# Foundry Local / Akıllı Asistan (Farklı Bir Perspektif: Risk ve Strateji)
+st.subheader("🤖 Foundry Local Strateji ve Risk Analisti")
 
-prompt_text = (
-    f"Sen profesyonel bir veri analistisin. "
-    f"{hisse_kodu} hissesi için yapılan regresyona göre mevcut fiyat ${son_fiyat:.2f}, "
-    f"5 gün sonraki tahmin ${gelecek_fiyat:.2f} bekleniyor. Kısa bir piyasa analizi sun."
-)
-
-if st.button("Yerel LLM (Foundry Local) ile Analiz Üret"):
-    with st.spinner("Yerel model üzerinden yanıt alınıyor..."):
+if st.button("Yerel LLM ile Stratejik Risk Raporu Oluştur"):
+    with st.spinner("Yerel model risk analizi hazırlıyor..."):
         try:
+            prompt_text = (
+                f"Sen kıdemli bir risk analistisin. {hisse_kodu} hissesi için beklenen değişim %{degisim_yuzde:.2f}. "
+                f"Bu veriye dayanarak yatırımcıya agresif veya defansif bir strateji öner, "
+                f"teknik riskleri 2 madde halinde özetle ve kesinlikle fiyat sayılarını tekrarlama."
+            )
             payload = {"model": model_adi, "prompt": prompt_text, "stream": False}
             response = requests.post(local_endpoint, json=payload, timeout=5)
             if response.status_code == 200:
                 result = response.json()
-                st.success(result.get("response", "Model yanıtı alındı."))
+                st.success(result.get("response", "Stratejik analiz tamamlandı."))
             else:
-                st.warning("Yerel Foundry Local servisi kapalı. Güvenli mod analizine geçiliyor:")
-                if gelecek_fiyat > son_fiyat:
-                    st.info(f"**Yerel Analiz:** {hisse_kodu} için model yukarı yönlü eğilim gösteriyor.")
+                st.warning("Yerel servis kapalı. Akıllı Risk Modu Devrede:")
+                if degisim_yuzde > 0:
+                    st.info(f"**Strateji Notu:** {hisse_kodu} için büyüme odaklı (growth) pozisyonlar korunabilir, ancak volatiliteye karşı stop-loss seviyeleri ihmal edilmemelidir.")
                 else:
-                    st.info(f"**Yerel Analiz:** {hisse_kodu} için yatay/aşağı yönlü konsolidasyon öngörülüyor.")
+                    st.info(f"**Strateji Notu:** {hisse_kodu} tarafında aşağı yönlü baskı gözlendiği için nakit oranını artırmak veya defansif sektörlere yönelmek mantıklı olabilir.")
         except Exception:
-            st.info(f"**Yerel Model Değerlendirmesi:** {hisse_kodu} hissesinde mevcut fiyat ${son_fiyat:.2f} ve 5 günlük tahmin ${gelecek_fiyat:.2f} olarak hesaplanmıştır.")
+            st.info(f"**Strateji Notu:** Seçilen dönemdeki trend yönüne göre portföyde çeşitlendirme yapılması ve risk yönetimi kurallarına uyulması tavsiye edilir.")
