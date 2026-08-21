@@ -6,79 +6,75 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import requests
 
-st.title("📈 Çoklu Hisse Analiz ve Foundry Local LLM Asistanı")
+st.title("📈 Çoklu Hisse Analiz ve Foundry Local Asistanı")
 
-# Yan menü (Sidebar) - Çoklu Hisse Seçimi
-st.sidebar.header("Proje Ayarları")
-hisse_listesi = ["AAPL (Apple)", "MSFT (Microsoft)", "GOOGL (Google)", "AMZN (Amazon)", "TSLA (Tesla)"]
-secilen_secenek = st.sidebar.selectbox("Analiz Edilecek Hisseyi Seçin", hisse_listesi)
-hisse_kodu = secilen_secenek.split(" ")[0]
+# Yan menü - Hisse Seçimi
+st.sidebar.header("Ayarlar")
+hisse_listesi = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+hisse_kodu = st.sidebar.selectbox("Hisse Seçin", hisse_listesi)
 
-gun_sayisi = st.sidebar.slider("Geçmiş Gün Aralığı", 30, 365, 250)
+gun_sayisi = st.sidebar.slider("Geçmiş Gün Sayısı", 30, 365, 250)
 
-# Yerel LLM / Foundry Local Bağlantı Ayarları
-st.sidebar.subheader("Microsoft Foundry Local")
-local_endpoint = st.sidebar.text_input("Yerel LLM Uç Noktası", "http://localhost:11434/api/generate")
-model_adi = st.sidebar.text_input("Yerel Model Adı", "phi3")
+# Yerel LLM / Foundry Local Ayarları
+st.sidebar.subheader("Foundry Local")
+local_endpoint = st.sidebar.text_input("Uç Nokta", "http://localhost:11434/api/generate")
+model_adi = st.sidebar.text_input("Model Adı", "phi3")
 
-# Veriyi çek
+# Veriyi Yahoo Finance'den çekme
 data = yf.download(hisse_kodu, period=f"{gun_sayisi}d")
 df = data.reset_index()
-df['Day_Index'] = np.arange(len(df))
 
-# Regresyon Modeli
+# Gün indeksini sütun olarak ekleme (Basit lineer regresyon için)
+df['Day_Index'] = range(len(df))
+
+# Lineer Regresyon Modeli Kurulumu
 model = LinearRegression()
-model.fit(df[['Day_Index']], df['Close'])
-df['Prediction'] = model.predict(df[['Day_Index']])
+X = df[['Day_Index']]
+y = df['Close']
 
-# Grafik çizimi
+model.fit(X, y)
+df['Prediction'] = model.predict(X)
+
+# Fiyat Grafiği Çizimi
 fig, ax = plt.subplots(figsize=(10, 5))
-ax.plot(df['Close'], label=f'{hisse_kodu} Gerçek Fiyat', color='blue')
-ax.plot(df['Prediction'], label='Lineer Regresyon Tahmini', color='red', linestyle='--')
+ax.plot(df['Close'], label='Gerçek Fiyat', color='blue')
+ax.plot(df['Prediction'], label='Regresyon Çizgisi', color='red')
 ax.legend()
 st.pyplot(fig)
 
-# İstatistiksel özet
-st.subheader(f"📊 {hisse_kodu} - İstatistiksel Fiyat Özeti")
-st.dataframe(df['Close'].describe())
+# İstatistiksel Özet Tablosu
+st.subheader("İstatistiksel Özet")
+st.write(df['Close'].describe())
 
-# Gelecek Tahmini Hesaplama (5 gün sonrası için)
-son_gun_index = df['Day_Index'].iloc[-1]
-gelecek_gunler = np.array([[son_gun_index + 1], [son_gun_index + 5]])
-tahminler = model.predict(gelecek_gunler)
+# 5 Gün Sonraki Fiyat Tahmini (Basit matematiksel hesap)
+son_index = df['Day_Index'].iloc[-1]
+tahmin_5_gun = model.predict([[son_index + 5]])
 
-# Güvenli tip dönüşümü (Hata almamak için .iloc[0] kullanıyoruz)
-gelecek_fiyat = float(tahminler[1])
-son_fiyat = float(df['Close'].iloc[-1].iloc[0]) if isinstance(df['Close'].iloc[-1], pd.Series) else float(df['Close'].iloc[-1])
-degisim_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
+son_fiyat = float(df['Close'].iloc[-1])
+gelecek_fiyat = float(tahmin_5_gun[0])
+fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
+# Ekranda Gösterme
 col1, col2 = st.columns(2)
 with col1:
-    st.metric(label="Mevcut Kapanış Fiyatı", value=f"${son_fiyat:.2f}")
+    st.metric("Son Kapanış Fiyatı", f"${son_fiyat:.2f}")
 with col2:
-    st.metric(label="5 Gün Sonraki Tahmini Fiyat", value=f"${gelecek_fiyat:.2f}", delta=f"{degisim_yuzde:.2f}%")
+    st.metric("5 Gün Sonraki Tahmin", f"${gelecek_fiyat:.2f}", delta=f"%{fark_yuzde:.2f}")
 
-# Foundry Local / Akıllı Asistan (Strateji ve Risk Analizi)
-st.subheader("🤖 Foundry Local Strateji ve Risk Analisti")
+# Foundry Local / LLM Akıllı Asistan Kısmı
+st.subheader("🤖 Foundry Local Risk Analisti")
 
-if st.button("Yerel LLM ile Stratejik Risk Raporu Oluştur"):
-    with st.spinner("Yerel model risk analizi hazırlıyor..."):
-        try:
-            prompt_text = (
-                f"Sen kıdemli bir risk analistisin. {hisse_kodu} hissesi için beklenen değişim %{degisim_yuzde:.2f}. "
-                f"Bu veriye dayanarak yatırımcıya agresif veya defansif bir strateji öner, "
-                f"teknik riskleri 2 madde halinde özetle ve kesinlikle fiyat sayılarını tekrarlama."
-            )
-            payload = {"model": model_adi, "prompt": prompt_text, "stream": False}
-            response = requests.post(local_endpoint, json=payload, timeout=5)
-            if response.status_code == 200:
-                result = response.json()
-                st.success(result.get("response", "Stratejik analiz tamamlandı."))
-            else:
-                st.warning("Yerel servis kapalı. Akıllı Risk Modu Devrede:")
-                if degisim_yuzde > 0:
-                    st.info(f"**Strateji Notu:** {hisse_kodu} için büyüme odaklı (growth) pozisyonlar korunabilir, ancak volatiliteye karşı stop-loss seviyeleri ihmal edilmemelidir.")
-                else:
-                    st.info(f"**Strateji Notu:** {hisse_kodu} tarafında aşağı yönlü baskı gözlendiği için nakit oranını artırmak veya defansif sektörlere yönelmek mantıklı olabilir.")
-        except Exception:
-            st.info(f"**Strateji Notu:** Seçilen dönemdeki trend yönüne göre portföyde çeşitlendirme yapılması ve risk yönetimi kurallarına uyulması tavsiye edilir.")
+if st.button("Risk Analizi Üret"):
+    prompt = f"{hisse_kodu} hissesi için mevcut fiyat ${son_fiyat:.2f} ve 5 günlük tahmin ${gelecek_fiyat:.2f}. Yatırımcıya kısa bir risk değerlendirmesi yap."
+    
+    try:
+        payload = {"model": model_adi, "prompt": prompt, "stream": False}
+        cevap = requests.post(local_endpoint, json=payload, timeout=4)
+        
+        if cevap.status_code == 200:
+            st.success(cevap.json().get("response"))
+        else:
+            # Servis kapalıysa güvenli özet notu
+            st.info(f"Yerel servis kapalı. Otomatik Not: {hisse_kodu} için değişim beklentisi %{fark_yuzde:.2f} seviyesindedir.")
+    except:
+        st.info(f"Otomatik Risk Notu: Model trendine göre portföyde çeşitlendirme yapılması önerilir.")
