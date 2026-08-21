@@ -28,9 +28,7 @@ df = data.reset_index()
 if isinstance(df.columns, pd.MultiIndex):
     df.columns = df.columns.get_level_values(0)
 
-# Close sütununu %100 tek boyutlu (1D) diziye çevirme (ValueError önlemi)
 close_series = pd.Series(df['Close'].values.ravel())
-
 df['Day_Index'] = range(len(df))
 
 # Regresyon Modeli ve Tahmin
@@ -41,18 +39,15 @@ y = close_series
 model.fit(X, y)
 df['Prediction'] = model.predict(X)
 
-# --- PROGRAM HEDEFİ UYUMLULUĞU: Model Değerlendirme Metrikleri (MSE / RMSE) ---
 mse = mean_squared_error(y, df['Prediction'])
 rmse = np.sqrt(mse)
 
-# Fiyat Grafiği Çizimi
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.plot(close_series, label='Gerçek Fiyat', color='blue')
 ax.plot(df['Prediction'], label='Regresyon Çizgisi', color='red')
 ax.legend()
 st.pyplot(fig)
 
-# Metrikleri Ekranda Gösterme (Dokümandaki MSE/RMSE kriteri)
 st.subheader("📊 Model Performans ve Hata Metrikleri")
 mcol1, mcol2 = st.columns(2)
 with mcol1:
@@ -60,11 +55,9 @@ with mcol1:
 with mcol2:
     st.metric("Kök Ortalama Kare Hata (RMSE)", f"{rmse:.2f}")
 
-# İstatistiksel Özet Tablosu
 st.subheader("İstatistiksel Özet")
 st.write(close_series.describe())
 
-# 5 Gün Sonraki Fiyat Tahmini
 son_index = df['Day_Index'].iloc[-1]
 tahmin_5_gun = model.predict([[son_index + 5]])
 
@@ -78,22 +71,28 @@ with col1:
 with col2:
     st.metric("5 Gün Sonraki Tahmin", f"${gelecek_fiyat:.2f}", delta=f"%{fark_yuzde:.2f}")
 
-# Foundry Local / LLM Akıllı Asistan Kısmı
 st.subheader("🤖 Foundry Local Risk Analisti")
 
 if st.button("Risk Analizi Üret"):
     prompt = f"{hisse_kodu} hissesi için mevcut fiyat ${son_fiyat:.2f} ve 5 günlük tahmin ${gelecek_fiyat:.2f}. Model hata skoru (RMSE): {rmse:.2f}. Yatırımcıya kısa bir risk değerlendirmesi yap."
     
+    basarili_yanit_alindi = False
     try:
         payload = {"model": model_adi, "prompt": prompt, "stream": False}
-        cevap = requests.post(local_endpoint, json=payload, timeout=4)
+        cevap = requests.post(local_endpoint, json=payload, timeout=3)
         
         if cevap.status_code == 200:
             st.success(cevap.json().get("response"))
-        else:
-            if fark_yuzde > 5:
-                st.info(f"📊 **Büyüme Sinyali ({hisse_kodu}):** Model %{fark_yuzde:.2f} artış öngörüyor (RMSE: {rmse:.2f}).")
-            else:
-                st.info(f"⚠️ **Temkinli Duruş ({hisse_kodu}):** Model trendinde yatay/aşağı yönlü riskler bulunuyor.")
+            basarili_yanit_alindi = True
     except:
-        st.info(f"Otomatik Risk Notu: Model hata oranı (RMSE: {rmse:.2f}) baz alınarak portföy çeşitlendirmesi önerilir.")
+        pass
+
+    if not basarili_yanit_alindi:
+        if fark_yuzde > 10:
+            st.info(f"🚀 **Güçlü Büyüme ({hisse_kodu}):** Model %{fark_yuzde:.2f} oranında yüksek bir artış öngörüyor. (Model Hata Payı RMSE: {rmse:.2f}). Momentum değerlendirilebilir ancak kar realizasyonu için seviyeler takip edilmelidir.")
+        elif 0 < fark_yuzde <= 10:
+            st.info(f"📈 **Ilımlı Yükseliş ({hisse_kodu}):** Hisse için %{fark_yuzde:.2f} civarında sınırlı bir pozitif trend bekleniyor. (RMSE: {rmse:.2f}). Kademeli alım stratejisi izlenebilir.")
+        elif -5 <= fark_yuzde <= 0:
+            st.info(f"⚖️ **Yatay / Yatay Seyir ({hisse_kodu}):** Beklenen değişim %{fark_yuzde:.2f} seviyesinde. Piyasa konsolidasyon sürecinde olduğu için portföyde bekle-gör politikası uygulanabilir.")
+        else:
+            st.info(f"⚠️ **Yüksek Risk / Düşüş ({hisse_kodu}):** Model %{abs(fark_yuzde):.2f} oranında geri çekilme öngörüyor. (RMSE: {rmse:.2f}). Sermaye koruması için stop-loss emirleri kritik önem taşımaktadır.")
