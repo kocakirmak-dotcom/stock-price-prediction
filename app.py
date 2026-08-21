@@ -24,7 +24,7 @@ model_adi = st.sidebar.text_input("Model Adı", "phi3")
 data = yf.download(hisse_kodu, period=f"{gun_sayisi}d")
 df = data.reset_index()
 
-# Sütun isimlerini düzleştirme (MultiIndex hatasını önlemek için)
+# Sütun isimlerini düzleştirme
 if isinstance(df.columns, pd.MultiIndex):
     df.columns = df.columns.get_level_values(0)
 
@@ -53,7 +53,6 @@ st.write(df['Close'].describe())
 son_index = df['Day_Index'].iloc[-1]
 tahmin_5_gun = model.predict([[son_index + 5]])
 
-# Kesin ve hatasız fiyat çekme
 son_fiyat = float(df['Close'].iloc[-1])
 gelecek_fiyat = float(tahmin_5_gun[0])
 fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
@@ -65,7 +64,7 @@ with col1:
 with col2:
     st.metric("5 Gün Sonraki Tahmin", f"${gelecek_fiyat:.2f}", delta=f"%{fark_yuzde:.2f}")
 
-# Foundry Local / LLM Akıllı Asistan Kısmı
+# Foundry Local / LLM Akıllı Asistan Kısmı (Dinamik Risk Analisti)
 st.subheader("🤖 Foundry Local Risk Analisti")
 
 if st.button("Risk Analizi Üret"):
@@ -78,6 +77,15 @@ if st.button("Risk Analizi Üret"):
         if cevap.status_code == 200:
             st.success(cevap.json().get("response"))
         else:
-            st.info(f"Yerel servis kapalı. Otomatik Not: {hisse_kodu} için değişim beklentisi %{fark_yuzde:.2f} seviyesindedir.")
+            # Dinamik Fallback (Hissenin durumuna göre değişen akıllı notlar)
+            if fark_yuzde > 5:
+                st.info(f"📊 **Büyüme Sinyali ({hisse_kodu}):** Model %{fark_yuzde:.2f} oranında güçlü bir yukarı yönlü ivme öngörüyor. Pozisyonlar korunabilir ancak kar al seviyelerine dikkat edilmelidir.")
+            elif 0 <= fark_yuzde <= 5:
+                st.info(f"⚖️ **Konsolidasyon Notu ({hisse_kodu}):** Fiyat yatay seyir izliyor (%{fark_yuzde:.2f}). Piyasa belirsizliğine karşı portföyde dengeli dağılım önerilir.")
+            else:
+                st.info(f"⚠️ **Düşüş Riski Uyarısı ({hisse_kodu}):** Model %{abs(fark_yuzde):.2f} oranında geri çekilme öngörüyor. Zarar kes (stop-loss) seviyelerinin gözden geçirilmesi tavsiye edilir.")
     except:
-        st.info(f"Otomatik Risk Notu: Model trendine göre portföyde çeşitlendirme yapılması önerilir.")
+        if fark_yuzde > 0:
+            st.info(f"🚀 **Trend Notu:** {hisse_kodu} için pozitif trend baskın görünmektedir.")
+        else:
+            st.info(f"🛡️ **Defansif Strateji:** {hisse_kodu} için temkinli duruş ve nakit yönetimi ön planda tutulmalıdır.")
