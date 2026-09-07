@@ -13,15 +13,18 @@ from sklearn.metrics import mean_squared_error
 # Sayfa genişliği ve koyu tema konfigürasyonu
 st.set_page_config(page_title="PyTorch LSTM Hisse Analizi", layout="wide")
 
-# Özel CSS ile Siyah Tema (Dark Mode) Tasarımı
 st.markdown("""
     <style>
     .stApp {
         background-color: #0e1117;
         color: #ffffff;
     }
+    /* Tüm etiketleri, başlıkları ve metinleri parlak ve okunaklı yapalım */
+    label, p, span, h1, h2, h3, h4, h5, h6, .stMarkdown {
+        color: #ffffff !important;
+    }
     div[data-testid="stMetricValue"] {
-        color: #00ffcc;
+        color: #00ffcc !important;
     }
     .stButton>button {
         background-color: #1f2937;
