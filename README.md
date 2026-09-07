@@ -4,12 +4,6 @@ Bu proje, finansal zaman serisi verilerini modern derin öğrenme araçlarıyla 
 
 ---
 
-### 🎥 3 Dakikalık Proje Sunum Videosu
-Projenin mimarisini, kod akışını ve çalışma mantığını anlattığım 3 dakikalık sunum videosuna aşağıdaki bağlantıdan ulaşabilirsiniz:
-https://youtu.be/Xeq07SU3lCM
-
----
-
 ### 🚀 Kullanılan Teknolojiler ve Mimari
 * **Arayüz:** Streamlit
 * **Veri Kaynağı ve İşleme:** yfinance, Pandas, NumPy
