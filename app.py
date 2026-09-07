@@ -13,13 +13,13 @@ from sklearn.metrics import mean_squared_error
 # Sayfa genişliği ve koyu tema konfigürasyonu
 st.set_page_config(page_title="PyTorch LSTM Hisse Analizi", layout="wide")
 
+# Özel CSS ile Siyah Tema ve Okunaklı Parlak Beyaz Yazılar
 st.markdown("""
     <style>
     .stApp {
         background-color: #0e1117;
         color: #ffffff;
     }
-    /* Tüm etiketleri, başlıkları ve metinleri parlak ve okunaklı yapalım */
     label, p, span, h1, h2, h3, h4, h5, h6, .stMarkdown {
         color: #ffffff !important;
     }
@@ -126,12 +126,12 @@ fark_yuzde = ((gelecek_fiyat - son_fiyat) / son_fiyat) * 100
 
 st.markdown("---")
 
-# --- GRAFİK VE METRİKLER (TEK KARE YERLEŞİMİ) ---
+# --- GRAFİK (SOL) VE METRİKLER/RİSK ANALİZİ (SAĞ) ---
 col_sol, col_sag = st.columns([1.3, 1])
 
 with col_sol:
     plt.style.use('dark_background')
-    fig, ax = plt.subplots(figsize=(7, 3.5))
+    fig, ax = plt.subplots(figsize=(7, 4.2))
     fig.patch.set_facecolor('#0e1117')
     ax.set_facecolor('#0e1117')
     
@@ -154,11 +154,10 @@ with col_sag:
     f1, f2 = st.columns(2)
     f1.metric("Son Fiyat", f"${son_fiyat:.2f}")
     f2.metric("5 Gün Sonra", f"${gelecek_fiyat:.2f}", delta=f"%{fark_yuzde:.2f}")
-
-# --- ALT KISIM: RİSK ASİSTANI (DÜZELTİLDİ) ---
-st.markdown("---")
-st.markdown("##### 🤖 Foundry Local Risk Analisti")
-if fark_yuzde > 0:
-    st.info(f"🚀 **LSTM Büyüme Sinyali ({hisse_kodu}):** Yukarı yönlü hareket bekleniyor. (Değişim: %{fark_yuzde:.2f}, RMSE: {rmse:.2f}).")
-else:
-    st.info(f"⚠️ **LSTM Risk Uyarısı ({hisse_kodu}):** Aşağı yönlü dalgalanma öngörülüyor. (RMSE: {rmse:.2f}).")
+    
+    st.markdown("---")
+    st.markdown("##### 🤖 Foundry Local Risk Analisti")
+    if fark_yuzde > 0:
+        st.info(f"🚀 **LSTM Büyüme Sinyali ({hisse_kodu}):** Yukarı yönlü hareket bekleniyor. (Değişim: %{fark_yuzde:.2f}, RMSE: {rmse:.2f}).")
+    else:
+        st.info(f"⚠️ **LSTM Risk Uyarısı ({hisse_kodu}):** Aşağı yönlü dalgalanma öngörülüyor. (RMSE: {rmse:.2f}).")
